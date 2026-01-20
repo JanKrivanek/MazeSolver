@@ -165,3 +165,6 @@ UpgradeLog*.htm
 
 # Project-specific
 *.log
+
+# Launch settings with secrets
+**/Properties/launchSettings.json
