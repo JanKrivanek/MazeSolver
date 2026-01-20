@@ -23,6 +23,11 @@ public class MazeSolverService
     /// If false, returns "N/A" for the description field.
     /// </summary>
     public bool UseVerboseDescription { get; set; } = true;
+    
+    /// <summary>
+    /// If true, provides the GetContextUsage tool to the LLM, allowing it to query context usage statistics.
+    /// </summary>
+    public bool ProvideContextUsageTool { get; set; } = false;
 
     private readonly LlmService _llmService;
     private readonly HashSet<Position> _discoveredCells = new();
@@ -32,8 +37,10 @@ public class MazeSolverService
     public event EventHandler<string>? OnStatusChanged;
     public event EventHandler<ContextOverflowException>? OnContextOverflow;
     public event EventHandler<string>? OnSolved;
+    public event EventHandler<int>? OnContextUsageToolCall;
 
     public int ToolCallCount { get; private set; }
+    public int ContextUsageToolCallCount { get; private set; }
     public long TotalInputTokens { get; private set; }
     public long TotalOutputTokens { get; private set; }
     public long TotalTokens => TotalInputTokens + TotalOutputTokens;
@@ -47,6 +54,7 @@ public class MazeSolverService
     public void Reset()
     {
         ToolCallCount = 0;
+        ContextUsageToolCallCount = 0;
         TotalInputTokens = 0;
         TotalOutputTokens = 0;
         IsSolving = false;
@@ -72,6 +80,10 @@ public class MazeSolverService
 
             var systemPrompt = CreateSystemPrompt(maze);
             var tools = new List<ToolUnion> { LlmService.CreateGetNeighboursTool() };
+            if (ProvideContextUsageTool)
+            {
+                tools.Add(LlmService.CreateGetContextUsageTool());
+            }
             var messages = new List<MessageParam>
             {
                 new()
@@ -286,6 +298,11 @@ Querying a non-adjacent cell will result in an error. Plan your exploration path
 
     private string ProcessToolCall(Maze maze, ToolUseBlock toolCall)
     {
+        if (toolCall.Name == "GetContextUsage")
+        {
+            return ProcessGetContextUsage();
+        }
+        
         if (toolCall.Name != "GetNeighbours")
         {
             return JsonSerializer.Serialize(new { error = $"Unknown tool: {toolCall.Name}" });
@@ -444,6 +461,35 @@ Proper handling of context overflow includes detecting the condition and impleme
 
 END OF CELL ANALYSIS REPORT FOR POSITION ({x}, {y})
 ===================================================";
+    }
+
+    /// <summary>
+    /// Processes the GetContextUsage tool call
+    /// </summary>
+    private string ProcessGetContextUsage()
+    {
+        ContextUsageToolCallCount++;
+        OnContextUsageToolCall?.Invoke(this, ContextUsageToolCallCount);
+        
+        var usagePercentage = LlmService.MaxContextTokens > 0 
+            ? (double)TotalTokens / LlmService.MaxContextTokens * 100 
+            : 0;
+
+        var result = new
+        {
+            totalTokensUsed = TotalTokens,
+            inputTokens = TotalInputTokens,
+            outputTokens = TotalOutputTokens,
+            maxContextTokens = LlmService.MaxContextTokens,
+            usagePercentage = Math.Round(usagePercentage, 2),
+            remainingTokens = LlmService.MaxContextTokens - TotalTokens,
+            status = usagePercentage >= 90 ? "critical" : usagePercentage >= 70 ? "warning" : "ok"
+        };
+
+        var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = false });
+        Log.Debug("GetContextUsage result: {Result}", json);
+
+        return json;
     }
 
     /// <summary>

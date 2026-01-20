@@ -129,6 +129,14 @@ public partial class MainWindow : Window
             });
         };
 
+        _solverService.OnContextUsageToolCall += (s, count) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                ContextUsageCallCountText.Text = count.ToString("N0");
+            });
+        };
+
         _solverService.OnStatusChanged += (s, status) =>
         {
             Dispatcher.Invoke(() =>
@@ -189,6 +197,7 @@ public partial class MainWindow : Window
         
         // Reset counters
         ToolCallCountText.Text = "0";
+        ContextUsageCallCountText.Text = "0";
         TokenUsageText.Text = "0 / 200,000 tokens";
         TokenPercentageText.Text = "0.0%";
         InputTokensText.Text = "0";
@@ -359,6 +368,15 @@ public partial class MainWindow : Window
         {
             _solverService.UseVerboseDescription = VerboseDescriptionCheckBox.IsChecked ?? true;
             Log.Information("UseVerboseDescription set to {Value}", _solverService.UseVerboseDescription);
+        }
+    }
+
+    private void ContextUsageToolCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_solverService != null)
+        {
+            _solverService.ProvideContextUsageTool = ContextUsageToolCheckBox.IsChecked ?? false;
+            Log.Information("ProvideContextUsageTool set to {Value}", _solverService.ProvideContextUsageTool);
         }
     }
 }

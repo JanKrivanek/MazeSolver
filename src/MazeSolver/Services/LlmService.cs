@@ -155,6 +155,25 @@ public class LlmService
     }
 
     /// <summary>
+    /// Creates the GetContextUsage tool definition
+    /// </summary>
+    public static ToolUnion CreateGetContextUsageTool()
+    {
+        return new Tool
+        {
+            Name = "GetContextUsage",
+            Description = "Get the current context window usage statistics. " +
+                         "Returns the total tokens used so far and the percentage of the context window filled. " +
+                         "Use this tool to monitor your context usage and plan accordingly to avoid context overflow.",
+            InputSchema = new InputSchema
+            {
+                Properties = new Dictionary<string, JsonElement>(),
+                Required = new List<string>()
+            }
+        };
+    }
+
+    /// <summary>
     /// Simple connection test
     /// </summary>
     public async Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
