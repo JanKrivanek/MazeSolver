@@ -1,0 +1,156 @@
+<Window x:Class="MazeSolver.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Maze Solver with LLM" 
+        Height="800" Width="1000"
+        MinHeight="600" MinWidth="800"
+        WindowStartupLocation="CenterScreen">
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Control Panel -->
+        <Border Grid.Row="0" Background="#F0F0F0" Padding="10">
+            <StackPanel Orientation="Horizontal">
+                <Label Content="Width:"/>
+                <TextBox x:Name="WidthTextBox" Width="60" Text="100"/>
+                
+                <Label Content="Height:" Margin="10,0,0,0"/>
+                <TextBox x:Name="HeightTextBox" Width="60" Text="100"/>
+                
+                <Button x:Name="GenerateButton" Content="Generate" Click="GenerateButton_Click"/>
+                <Button x:Name="SolveButton" Content="Auto-Solve" Click="SolveButton_Click" IsEnabled="False"/>
+                <Button x:Name="CancelButton" Content="Cancel" Click="CancelButton_Click" IsEnabled="False"/>
+                <Button x:Name="ClearVisitedButton" Content="Clear Visited" Click="ClearVisitedButton_Click" IsEnabled="False"/>
+                
+                <Separator Margin="10,0"/>
+                
+                <CheckBox x:Name="ForceAdjacentCheckBox" 
+                          Content="Force Adjacent" 
+                          IsChecked="True" 
+                          VerticalAlignment="Center"
+                          ToolTip="Only allow discovering cells adjacent to already discovered cells"
+                          Checked="ForceAdjacentCheckBox_Changed"
+                          Unchecked="ForceAdjacentCheckBox_Changed"/>
+                
+                <CheckBox x:Name="VerboseDescriptionCheckBox" 
+                          Content="Verbose Output" 
+                          IsChecked="True" 
+                          VerticalAlignment="Center"
+                          Margin="10,0,0,0"
+                          ToolTip="Include verbose cell descriptions in tool responses (consumes more tokens)"
+                          Checked="VerboseDescriptionCheckBox_Changed"
+                          Unchecked="VerboseDescriptionCheckBox_Changed"/>
+                
+                <Separator Margin="10,0"/>
+                
+                <Label Content="Click cells to toggle path/wall" Foreground="Gray"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Maze Display Area -->
+        <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" Margin="10">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Canvas x:Name="MazeCanvas" 
+                        Background="White"
+                        MouseLeftButtonDown="MazeCanvas_MouseLeftButtonDown"/>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" Background="#E8E8E8" Padding="10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Text="Status: " FontWeight="Bold"/>
+                    <TextBlock x:Name="StatusText" Text="Ready"/>
+                </StackPanel>
+                
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock Text="Tool Calls: " FontWeight="Bold"/>
+                    <TextBlock x:Name="ToolCallCountText" Text="0" Foreground="Blue"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Token Usage Panel -->
+        <Border Grid.Row="3" Background="#F8F8F8" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Token Info -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="0,0,20,5">
+                    <TextBlock Text="Context Usage: " FontWeight="Bold"/>
+                    <TextBlock x:Name="TokenUsageText" Text="0 / 200,000 tokens"/>
+                    <TextBlock Text=" (" Margin="5,0,0,0"/>
+                    <TextBlock x:Name="TokenPercentageText" Text="0.0%"/>
+                    <TextBlock Text=")"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal">
+                    <TextBlock Text="Input: " Foreground="Gray"/>
+                    <TextBlock x:Name="InputTokensText" Text="0"/>
+                    <TextBlock Text="  Output: " Foreground="Gray" Margin="10,0,0,0"/>
+                    <TextBlock x:Name="OutputTokensText" Text="0"/>
+                </StackPanel>
+
+                <!-- Progress Bar -->
+                <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,5,0,0">
+                    <ProgressBar x:Name="ContextProgressBar" 
+                                 Height="20" 
+                                 Minimum="0" 
+                                 Maximum="100" 
+                                 Value="0"/>
+                    <TextBlock x:Name="ProgressText" 
+                               Text="0%" 
+                               HorizontalAlignment="Center" 
+                               VerticalAlignment="Center"
+                               FontWeight="Bold"/>
+                </Grid>
+            </Grid>
+        </Border>
+        
+        <!-- Context Overflow Indicator (hidden by default) -->
+        <Border x:Name="OverflowIndicator" 
+                Grid.Row="1" 
+                Background="#FFCCCC" 
+                VerticalAlignment="Top"
+                HorizontalAlignment="Stretch"
+                Padding="20"
+                Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock Text="⚠️ CONTEXT OVERFLOW!" 
+                           FontSize="20" 
+                           FontWeight="Bold" 
+                           Foreground="DarkRed"
+                           HorizontalAlignment="Center"/>
+                <TextBlock x:Name="OverflowMessageText" 
+                           Text="" 
+                           Foreground="DarkRed"
+                           TextWrapping="Wrap"
+                           HorizontalAlignment="Center"
+                           Margin="0,10,0,0"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

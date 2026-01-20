@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "MazeSolver": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "LLM_ENDPOINT": "<your-azure-ai-endpoint>",
+        "LLM_MODEL": "<your-model-name>",
+        "LLM_API_KEY": "<your-api-key>"
+      }
+    },
+    "MazeSolver-CLI": {
+      "commandName": "Project",
+      "commandLineArgs": "--cli --width 10 --height 10 --auto-solve",
+      "environmentVariables": {
+        "LLM_ENDPOINT": "<your-azure-ai-endpoint>",
+        "LLM_MODEL": "<your-model-name>",
+        "LLM_API_KEY": "<your-api-key>"
+      }
+    }
+  }
+}
